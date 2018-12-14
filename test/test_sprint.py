@@ -6,7 +6,7 @@ import os
 import datetime
 from trello import TrelloClient
 
-from build import build_board, add_lists, add_meta_cards, TEAM, get_viable_candidates, update_file, purge_lists, do_meta_cards, add_members, get_number_of_sprint_boards
+from build import build_board, add_lists, add_meta_cards, get_viable_candidates, update_file, purge_lists, do_meta_cards, add_members, get_number_of_sprint_boards
 from test import test_settings
 
 
@@ -55,18 +55,21 @@ class BuildTests(TestCase):
         result = add_meta_cards(meta_list)
         cards = [x.name.replace(' ', '').split(':')[1] for x in result.list_cards()]
         self.assertEqual(len(cards), 2)
-        self.assertTrue(cards[0] in TEAM)
-        self.assertTrue(cards[1] in TEAM)
+        self.assertTrue(cards[0] in test_settings.TEAM)
+        self.assertTrue(cards[1] in test_settings.TEAM)
         self.assertTrue(cards[0] != cards[1])
 
-    @mock.patch('build.get_viable_candidates')
-    def test_same_person_cannot_be_selected_for_both_cards(self, candidate):
-        expected = ['jake', 'caleb']
-        candidate.return_value = list(expected)
-        add_lists(self.board)
-        result = do_meta_cards(self.board)
-        self.assertCountEqual(expected, result)
-        self.assertTrue(result[1] != result[0])
+    # todo redo all of this
+    @mock.patch('settings.META_JOBS')
+    def test_same_person_cannot_be_selected_for_both_cards(self, team):
+        team.return_value = test_settings.META_JOBS
+        pull_requests = os.path.abspath('assignments/test.txt')
+        with open(pull_requests, 'w') as f:
+            for i in ['jake','braxton']:
+                f.write(i)
+                f.write(',')
+        result = add_meta_cards('test', self.board, previous='jake')
+        self.fail('x')
 
     def test_add_members_to_board(self):
         add_members(self.organization, self.board)

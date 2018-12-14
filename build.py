@@ -1,5 +1,6 @@
 import datetime
 import os
+import requests
 from trello import TrelloClient, exceptions
 from argparse import ArgumentParser
 import random
@@ -7,16 +8,16 @@ import random
 import settings
 
 
-META_JOBS = {
-    'PRs': 'assignments/pull_requests.txt',
-    'WebHelp': 'assignments/web_help.txt',
-    'test': 'assignments/test.txt',
-}
+def add_board(client, board_name, organization_id):
+    post_args = {'name': board_name, 'prefs_cardCovers': False, 'idOrganization': organization_id}
+    response = client.fetch_json('/boards', http_method='POST', post_args=post_args,)
+    board = client.get_board(response['id'])
+    return board
 
 
 def build_board(client, number, organization_id=None):
     name = 'Sprint {}'.format(number)
-    board = client.add_board(name, organization_id=organization_id)
+    board = add_board(client, name, organization_id)
     return board
 
 
@@ -44,31 +45,6 @@ def add_members(organization, board):
 
 
 
-def add_meta_cards(job, trello_list, previous=None):
-    path = os.path.abspath(META_JOBS[job])
-    available_candidates = get_viable_candidates(META_JOBS[job])
-    selected = random.choice(available_candidates)
-    while selected == previous:
-        selected = random.choice(available_candidates)
-    available_candidates.remove(selected)
-    update_file(META_JOBS[job], available_candidates)
-    card = trello_list.add_card('{}: {}'.format(job, selected))
-    return card
-
-
-def do_meta_cards(board, jobs=None):
-    cards = []
-    previous = None
-    meta_list = [x for x in board.open_lists() if x.name.lower() == 'meta'][0]
-    job_types = jobs if jobs else META_JOBS
-    for key, item in job_types.items():
-        selected = add_meta_cards(key, meta_list, previous)
-        cards.append(selected)
-        previous = selected.name
-    result = [x.name.replace(' ', '').split(':')[1] for x in cards]
-    return result
-
-
 def get_viable_candidates(file_path):
     with open(file_path, 'r') as f:
         data = f.read()
@@ -76,6 +52,34 @@ def get_viable_candidates(file_path):
     if data_list:
         return data_list
     return settings.TEAM
+
+
+def add_meta_cards(job, trello_list, previous=None):
+    path = os.path.abspath(settings.META_JOBS[job])
+    available_candidates = get_viable_candidates(settings.META_JOBS[job])
+    selected = random.choice(available_candidates)
+    n = 0
+    while selected == previous and n < 2:
+        selected = random.choice(available_candidates)
+        n = n + 1
+    if selected in available_candidates:
+        available_candidates.remove(selected)
+    update_file(settings.META_JOBS[job], available_candidates)
+    card = trello_list.add_card('{}: '.format(job))
+    return card
+
+
+def do_meta_cards(board, jobs=None):
+    cards = []
+    previous = None
+    meta_list = [x for x in board.open_lists() if x.name.lower() == 'meta'][0]
+    job_types = jobs if jobs else settings.META_JOBS
+    for key, item in job_types.items():
+        selected = add_meta_cards(key, meta_list, previous)
+        cards.append(selected)
+        previous = selected.name.lower().replace(' ', '').split(':')[1]
+    result = [x.name.replace(' ', '').split(':')[1] for x in cards]
+    return result
 
 
 def update_file(file_path, updated):

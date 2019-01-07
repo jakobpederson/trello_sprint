@@ -6,7 +6,7 @@ import os
 import datetime
 from trello import TrelloClient
 
-from build import build_board, add_lists, add_meta_cards, get_viable_candidates, update_file, purge_lists, do_meta_cards, add_members, get_number_of_sprint_boards
+from build import build_board, add_lists, add_meta_cards, get_viable_candidates, update_file, do_meta_cards, add_members, get_number_of_sprint_boards
 from test import test_settings
 
 
@@ -38,10 +38,9 @@ class BuildTests(TestCase):
         test_board = self.trello_client.get_board(test_settings.TEST_BOARD_ID)
         board.return_value = test_board
         self.board = build_board(self.trello_client, 'test_board_1')
-        self.assertEqual('test_board_1', self.board.name)
+        self.assertEqual('Sprint test_board_1', self.board.name)
 
     def tearDown(self):
-        purge_lists(self.board)
         for member in self.board.normal_members():
             self.board.remove_member(member)
 
